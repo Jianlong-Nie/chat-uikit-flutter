@@ -9,10 +9,11 @@ import 'package:tencent_cloud_chat_uikit/business_logic/view_models/tui_friendsh
 import 'package:tencent_cloud_chat_uikit/data_services/conversation/conversation_services.dart';
 import 'package:tencent_cloud_chat_uikit/data_services/group/group_services.dart';
 import 'package:tencent_cloud_chat_uikit/data_services/services_locatar.dart';
-
 import 'package:tencent_cloud_chat_uikit/ui/views/TIMUIKitAddGroup/tim_uikit_send_application.dart';
 import 'package:tencent_cloud_chat_uikit/ui/widgets/avatar.dart';
 import 'package:tencent_cloud_chat_uikit/base_widgets/tim_ui_kit_base.dart';
+import 'package:QVChat/src/services/chatApp.dart';
+import 'package:get/get.dart';
 
 class TIMUIKitAddGroup extends StatefulWidget {
   /// The life cycle hooks for adding group business logic
@@ -39,6 +40,7 @@ class _TIMUIKitAddGroupState extends TIMUIKitState<TIMUIKitAddGroup> {
       serviceLocator<ConversationService>();
   final TUIFriendShipViewModel friendShipViewModel =
       serviceLocator<TUIFriendShipViewModel>();
+  final ChatAppController _chatAppController = Get.put(ChatAppController());
   List<V2TimGroupInfo>? _addedGroupList;
   List<V2TimGroupInfo>? groupResult = [];
   final FocusNode _focusNode = FocusNode();
@@ -90,7 +92,7 @@ class _TIMUIKitAddGroupState extends TIMUIKitState<TIMUIKitAddGroup> {
           return;
         }
 
-        if(isDesktopScreen){
+        if (isDesktopScreen) {
           if (widget.closeFunc != null) {
             widget.closeFunc!();
           }
@@ -101,20 +103,19 @@ class _TIMUIKitAddGroupState extends TIMUIKitState<TIMUIKitAddGroup> {
             height: MediaQuery.of(context).size.width * 0.4,
             title: TIM_t("添加群聊"),
             child: (closeFuncSendApplication) => SendJoinGroupApplication(
-                lifeCycle: widget.lifeCycle,
-                groupInfo: groupInfo,
+              lifeCycle: widget.lifeCycle,
+              groupInfo: groupInfo,
             ),
           );
-        }else{
+        } else {
           Navigator.pushReplacement(
               context,
               MaterialPageRoute(
                   builder: (context) => SendJoinGroupApplication(
-                    lifeCycle: widget.lifeCycle,
-                    groupInfo: groupInfo,
-                  )));
+                        lifeCycle: widget.lifeCycle,
+                        groupInfo: groupInfo,
+                      )));
         }
-
       },
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12),
@@ -138,10 +139,10 @@ class _TIMUIKitAddGroupState extends TIMUIKitState<TIMUIKitAddGroup> {
                   "ID: $groupID",
                   style: TextStyle(fontSize: 12, color: theme.weakTextColor),
                 ),
-                Text(
-                  "群类型: $groupType",
-                  style: TextStyle(fontSize: 12, color: theme.weakTextColor),
-                )
+                // Text(
+                //   "群类型: $groupType",
+                //   style: TextStyle(fontSize: 12, color: theme.weakTextColor),
+                // )
               ],
             )
           ],
@@ -227,19 +228,45 @@ class _TIMUIKitAddGroupState extends TIMUIKitState<TIMUIKitAddGroup> {
     super.dispose();
   }
 
+  searchGroupByName(String params) async {
+    final response1 = await _chatAppController.seachGroups(params);
+    print("这是怎么回事呢");
+    print(response1);
+    if (response1 != null) {
+      print(response1);
+      final res = await _groupServices.getGroupsInfo(groupIDList: response1);
+      if (res != null) {
+        setState(() {
+          groupResult = res
+              .where((e) => e.resultCode == 0)
+              .map((e) => e.groupInfo!)
+              .toList();
+        });
+      } else {
+        setState(() {
+          groupResult = [];
+        });
+      }
+    }
+  }
+
   searchGroup(String params) async {
-    final res = await _groupServices.getGroupsInfo(groupIDList: [params]);
-    if (res != null) {
-      setState(() {
-        groupResult = res
-            .where((e) => e.resultCode == 0)
-            .map((e) => e.groupInfo!)
-            .toList();
-      });
+    final response2 = await _groupServices.getGroupsInfo(groupIDList: [params]);
+    if (response2 != null && response2.isNotEmpty) {
+      print(response2);
+      List<V2TimGroupInfo>? groupResult1 = response2
+          .where((e) => e.resultCode == 0)
+          .map((e) => e.groupInfo!)
+          .toList();
+      if (groupResult1.isNotEmpty) {
+        setState(() {
+          groupResult = groupResult1;
+        });
+      } else {
+        searchGroupByName(params);
+      }
     } else {
-      setState(() {
-        groupResult = [];
-      });
+      searchGroupByName(params);
     }
   }
 
@@ -293,7 +320,7 @@ class _TIMUIKitAddGroupState extends TIMUIKitState<TIMUIKitAddGroup> {
                     ),
                     fillColor: theme.inputFillColor,
                     filled: true,
-                    hintText: TIM_t("搜索群ID")),
+                    hintText: "Search by group ID、group name"),
               )),
             ],
           ),

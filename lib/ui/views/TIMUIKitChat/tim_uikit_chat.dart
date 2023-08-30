@@ -349,6 +349,83 @@ class _TUIChatState extends TIMUIKitState<TIMUIKitChat> {
     );
   }
 
+  void _showAlert(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text("Group Notice"),
+          content: Text(model.groupInfo?.notification ?? ""),
+          actions: [
+            // Define any actions you want, like buttons
+            TextButton(
+              onPressed: () {
+                // Add any action you want to perform on button press
+                Navigator.of(context).pop(); // Closes the alert dialog
+              },
+              child: Text("OK"),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _renderGroupNotice(BuildContext context) {
+    if (model.groupInfo?.notification != null) {
+      return Row(
+        children: [
+          GestureDetector(
+              onTap: () {
+                _showAlert(context);
+              },
+              child: Container(
+                width: MediaQuery.of(context).size.width,
+                padding: EdgeInsets.only(left: 16, right: 16),
+                color: const Color.fromRGBO(255, 149, 1, 0.1),
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment
+                        .center, // Vertically center the children
+                    children: [
+                      SizedBox(
+                        height: 8,
+                      ),
+                      Row(children: [
+                        Icon(
+                          Icons
+                              .notifications, // Icon data for the "notice" icon
+                          color: hexToColor("FF8C39"),
+                          size: 16, // Adjust the size of the icon as needed
+                        ),
+                        SizedBox(
+                          width: 4,
+                        ),
+                        Container(
+                          width: MediaQuery.of(context).size.width - 32 - 26,
+                          child: Text(
+                            model.groupInfo?.notification ?? "",
+                            style: TextStyle(
+                                color: hexToColor("FF8C39"), fontSize: 12),
+                            maxLines: 1, // Limit the text to two lines
+                            overflow: TextOverflow
+                                .ellipsis, // Show ellipsis (...) if the text overflows
+                          ),
+                        )
+                      ]),
+                      SizedBox(
+                        height: 8,
+                      ),
+                    ],
+                  ),
+                ),
+              )),
+        ],
+      );
+    }
+    return SizedBox();
+  }
+
   String _getTitle() {
     return TencentUtils.checkString(widget.conversationShowName) ??
         widget.conversation.showName ??
@@ -418,7 +495,7 @@ class _TUIChatState extends TIMUIKitState<TIMUIKitChat> {
                 model.loadGroupInfo(_getConvID());
                 break;
               case UpdateType.memberList:
-                if(widget.groupMemberList == null){
+                if (widget.groupMemberList == null) {
                   model.loadGroupMemberList(groupID: _getConvID());
                 }
                 model.loadGroupInfo(_getConvID());
@@ -497,7 +574,9 @@ class _TUIChatState extends TIMUIKitState<TIMUIKitChat> {
                           if (filteredApplicationList.isNotEmpty)
                             _renderJoinGroupApplication(
                                 filteredApplicationList.length, theme),
-                          if (widget.topFixWidget != null) widget.topFixWidget!,
+                          // if (widget.topFixWidget != null) widget.topFixWidget!,
+                          if (_getConvType() == ConvType.group)
+                            _renderGroupNotice(context),
                           Expanded(
                               child: Container(
                             color: theme.chatBgColor,

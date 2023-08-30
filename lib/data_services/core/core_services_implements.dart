@@ -1,5 +1,7 @@
 // ignore_for_file: avoid_print
 
+import 'dart:convert';
+
 import 'package:collection/collection.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:tencent_cloud_chat_uikit/business_logic/view_models/tui_setting_model.dart';
@@ -16,6 +18,8 @@ import 'package:tencent_cloud_chat_uikit/data_services/core/core_services.dart';
 import 'package:tencent_cloud_chat_uikit/data_services/core/tim_uikit_config.dart';
 import 'package:tencent_cloud_chat_uikit/data_services/services_locatar.dart';
 import 'package:tencent_cloud_chat_uikit/ui/utils/platform.dart';
+import 'package:QVChat/src/services/chatApp.dart';
+import 'package:get/get.dart';
 import 'package:tencent_cloud_chat_uikit/data_services/core/web_support/uikit_web_support.dart'
     if (dart.library.html) 'package:tencent_cloud_chat_uikit/data_services/core/web_support/uikit_web_support_implement.dart';
 
@@ -39,7 +43,7 @@ class CoreServicesImpl implements CoreServices {
   ValueChanged<TIMCallback>? onCallback;
   VoidCallback? webLoginSuccess;
   bool isLoginSuccess = false;
-
+  ChatAppController _chatAppController = Get.put(ChatAppController());
   V2TimUserFullInfo? get loginUserInfo {
     return _loginInfo;
   }
@@ -116,7 +120,7 @@ class CoreServicesImpl implements CoreServices {
     webLoginSuccess = onWebLoginSuccess;
     final result = await TencentImSDKPlugin.v2TIMManager.initSDK(
         sdkAppID: sdkAppID,
-        loglevel: loglevel,
+        loglevel: LogLevelEnum.V2TIM_LOG_NONE,
         listener: V2TimSDKListener(
             onConnectFailed: listener.onConnectFailed,
             onConnectSuccess: () {
@@ -386,9 +390,22 @@ class CoreServicesImpl implements CoreServices {
   }
 
   @override
-  Future<V2TimCallback> setSelfInfo({
-    required V2TimUserFullInfo userFullInfo,
-  }) {
+  Future<V2TimCallback> setSelfInfo(
+      {required V2TimUserFullInfo userFullInfo, bool isEmail = false}) {
+    final customInfo = userFullInfo.customInfo;
+    print(json.encode(customInfo));
+
+    if (customInfo != null && customInfo.isNotEmpty) {
+      if (isEmail) {
+        customInfo["verified"] = "0";
+      }
+      _chatAppController.syncProfile(
+          loginUserInfo?.userID ?? "", customInfo, isEmail);
+    }
+    if (userFullInfo.nickName != null) {
+      _chatAppController.syncProfile(loginUserInfo?.userID ?? "",
+          {"nick_name": userFullInfo.nickName}, isEmail);
+    }
     return TencentImSDKPlugin.v2TIMManager
         .setSelfInfo(userFullInfo: userFullInfo);
   }

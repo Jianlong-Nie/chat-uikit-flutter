@@ -8,6 +8,7 @@ import 'package:http/http.dart' as http;
 import 'package:tencent_cloud_chat_uikit/business_logic/separate_models/tui_chat_separate_view_model.dart';
 import 'package:tencent_cloud_chat_uikit/data_services/message/message_services.dart';
 import 'package:tencent_cloud_chat_uikit/ui/utils/screen_utils.dart';
+import 'package:tencent_cloud_chat_uikit/ui/views/TIMUIKitChat/tim_uikit_medias_preview.dart';
 import 'package:tencent_cloud_chat_uikit/ui/widgets/wide_popup.dart';
 import 'package:tencent_open_file/tencent_open_file.dart';
 import 'package:universal_html/html.dart' as html;
@@ -33,6 +34,7 @@ import 'package:tencent_cloud_chat_uikit/ui/widgets/image_screen.dart';
 import 'package:transparent_image/transparent_image.dart';
 import 'package:image_gallery_saver/image_gallery_saver.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter_swiper_plus/flutter_swiper_plus.dart';
 import 'package:tencent_cloud_chat_uikit/ui/utils/logger.dart';
 
 class TIMUIKitImageElem extends StatefulWidget {
@@ -209,6 +211,7 @@ class _TIMUIKitImageElem extends TIMUIKitState<TIMUIKitImageElem> {
           return;
         }
       } else {
+        print("到此一游");
         onTIMCallback(TIMCallback(
             type: TIMCallbackType.INFO,
             infoRecommendText: TIM_t("the message is downloading"),
@@ -421,16 +424,10 @@ class _TIMUIKitImageElem extends TIMUIKitState<TIMUIKitImageElem> {
         Navigator.of(context).push(
           PageRouteBuilder(
               opaque: false,
-              pageBuilder: (_, __, ___) => ImageScreen(
-                  imageProvider: CachedNetworkImageProvider(
-                    imgUrl ?? "",
-                    cacheKey: widget.message.msgID,
-                  ),
-                  heroTag: heroTag,
-                  messageID: widget.message.msgID,
-                  downloadFn: () async {
-                    return await _saveImg(theme!);
-                  })),
+              pageBuilder: (_, __, ___) => TIMUIKitMediaPreview(
+                    message: widget.message,
+                    conId: widget.chatModel.conversationID,
+                  )),
         );
       }
     } else {
@@ -442,15 +439,11 @@ class _TIMUIKitImageElem extends TIMUIKitState<TIMUIKitImageElem> {
       } else {
         Navigator.of(context).push(
           PageRouteBuilder(
-            opaque: false, // set to false
-            pageBuilder: (_, __, ___) => ImageScreen(
-                imageProvider: FileImage(File(imgPath ?? "")),
-                heroTag: heroTag,
-                messageID: widget.message.msgID,
-                downloadFn: () async {
-                  return await _saveImg(theme!);
-                }),
-          ),
+              opaque: false, // set to false
+              pageBuilder: (_, __, ___) => TIMUIKitMediaPreview(
+                    message: widget.message,
+                    conId: widget.chatModel.conversationID,
+                  )),
         );
       }
     }
@@ -485,7 +478,6 @@ class _TIMUIKitImageElem extends TIMUIKitState<TIMUIKitImageElem> {
                   ));
       } else {
         final imgPath = (TencentUtils.checkString(smallLocalPath) != null
-
             ? smallLocalPath
             : originLocalPath)!;
         return Hero(
@@ -508,9 +500,9 @@ class _TIMUIKitImageElem extends TIMUIKitState<TIMUIKitImageElem> {
           isNetworkImage: isNetworkImage,
           imgUrl: webPath ?? smallImg?.url ?? originalImg?.url ?? "",
           imgPath: (TencentUtils.checkString(originLocalPath) != null
-              ? originLocalPath
-              : smallLocalPath) ?? ""
-      ),
+                  ? originLocalPath
+                  : smallLocalPath) ??
+              ""),
       child: getImageWidget(),
     );
   }

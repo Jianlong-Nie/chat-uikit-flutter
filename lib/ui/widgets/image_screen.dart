@@ -17,6 +17,7 @@ class ImageScreen extends StatefulWidget {
       {required this.imageProvider,
       required this.heroTag,
       this.downloadFn,
+      this.shareFn,
       this.messageID,
       Key? key})
       : super(key: key);
@@ -25,6 +26,7 @@ class ImageScreen extends StatefulWidget {
   final String heroTag;
   final String? messageID;
   final Future<void> Function()? downloadFn;
+  final Future<void> Function()? shareFn;
 
   @override
   State<StatefulWidget> createState() {
@@ -49,8 +51,8 @@ class _ImageScreenState extends TIMUIKitState<ImageScreen>
       GlobalKey<ExtendedImageGestureState>();
 
   void close() {
-    slidePagekey.currentState!.popPage();
-    Navigator.pop(context);
+    // slidePagekey.currentState!.popPage();
+    Navigator.of(context).pop();
   }
 
   @override
@@ -86,49 +88,46 @@ class _ImageScreenState extends TIMUIKitState<ImageScreen>
             constraints: BoxConstraints.expand(
               height: MediaQuery.of(context).size.height,
             ),
-            child: Stack(
-              alignment: Alignment.center,
-                children: [
+            child: Stack(alignment: Alignment.center, children: [
               Positioned(
-                top: 0,
-                left: 0,
-                bottom: 0,
-                right: 0,
-                child: ExtendedImageSlidePage(
-                  key: slidePagekey,
-                  slideAxis: SlideAxis.both,
-                  slidePageBackgroundHandler: (Offset offset, Size size) {
-                    if (orientation == Orientation.landscape) {
-                      return Colors.black;
-                    }
-                    double opacity = 0.0;
-                    opacity = offset.distance /
-                        (Offset(size.width, size.height).distance / 2.0);
-                    return Colors.black
-                        .withOpacity(min(1.0, max(1.0 - opacity, 0.0)));
-                  },
-                  slideType: SlideType.onlyImage,
-                  slideEndHandler: (
-                    Offset offset, {
-                    ExtendedImageSlidePageState? state,
-                    ScaleEndDetails? details,
-                  }) {
-                    final vy = details?.velocity.pixelsPerSecond.dy ?? 0;
-                    final oy = offset.dy;
-                    if (vy > 300 || oy > 100) {
-                      return true;
-                    }
-                    return null;
-                  },
-                  child: GestureDetector(
-                    onTap: close,
-                    child: HeroWidget(
+                  top: 0,
+                  left: 0,
+                  bottom: 0,
+                  right: 0,
+                  child: ExtendedImageSlidePage(
+                    key: slidePagekey,
+                    slideAxis: SlideAxis.both,
+                    slidePageBackgroundHandler: (Offset offset, Size size) {
+                      if (orientation == Orientation.landscape) {
+                        return Colors.black;
+                      }
+                      double opacity = 0.0;
+                      opacity = offset.distance /
+                          (Offset(size.width, size.height).distance / 2.0);
+                      return Colors.black
+                          .withOpacity(min(1.0, max(1.0 - opacity, 0.0)));
+                    },
+                    slideType: SlideType.onlyImage,
+                    slideEndHandler: (
+                      Offset offset, {
+                      ExtendedImageSlidePageState? state,
+                      ScaleEndDetails? details,
+                    }) {
+                      final vy = details?.velocity.pixelsPerSecond.dy ?? 0;
+                      final oy = offset.dy;
+                      if (vy > 300 || oy > 100) {
+                        return true;
+                      }
+                      return null;
+                    },
+                    child: GestureDetector(
+                      onTap: close,
+                      child: HeroWidget(
                         tag: widget.heroTag,
                         slidePagekey: slidePagekey,
                         child: ExtendedImage(
                           image: widget.imageProvider,
-                          extendedImageGestureKey:
-                          extendedImageGestureKey,
+                          extendedImageGestureKey: extendedImageGestureKey,
                           enableSlideOutPage: true,
                           // fit: BoxFit.scaleDown,
                           initGestureConfigHandler: (state) {
@@ -140,8 +139,7 @@ class _ImageScreenState extends TIMUIKitState<ImageScreen>
                               speed: 1.0,
                               inertialSpeed: 100.0,
                               initialScale: initialScale,
-                              initialAlignment:
-                              InitialAlignment.topCenter,
+                              initialAlignment: InitialAlignment.topCenter,
                               hitTestBehavior: HitTestBehavior.opaque,
                             );
                           },
@@ -158,17 +156,13 @@ class _ImageScreenState extends TIMUIKitState<ImageScreen>
                                     MediaQuery.of(context).size.height;
                                 final screenWidth =
                                     MediaQuery.of(context).size.width;
-                                final imgHeight = state.extendedImageInfo
-                                    ?.image.height ??
-                                    1;
-                                final imgWidth = state
-                                    .extendedImageInfo?.image.width ??
-                                    0;
+                                final imgHeight =
+                                    state.extendedImageInfo?.image.height ?? 1;
+                                final imgWidth =
+                                    state.extendedImageInfo?.image.width ?? 0;
                                 final imgRatio = imgWidth / imgHeight;
-                                final screenRatio =
-                                    screenWidth / screenHeight;
-                                final fitWidthScale =
-                                    screenRatio / imgRatio;
+                                final screenRatio = screenWidth / screenHeight;
+                                final fitWidthScale = screenRatio / imgRatio;
                                 if (screenRatio > imgRatio) {
                                   // Long Image
                                   // initialScale = fitWidthScale;
@@ -196,8 +190,8 @@ class _ImageScreenState extends TIMUIKitState<ImageScreen>
                             double end;
 
                             //remove old
-                            _doubleClickAnimation?.removeListener(
-                                _doubleClickAnimationListener);
+                            _doubleClickAnimation
+                                ?.removeListener(_doubleClickAnimationListener);
 
                             //stop pre
                             _doubleClickAnimationController.stop();
@@ -219,19 +213,18 @@ class _ImageScreenState extends TIMUIKitState<ImageScreen>
                             };
                             _doubleClickAnimation =
                                 _doubleClickAnimationController.drive(
-                                    Tween<double>(
-                                        begin: begin, end: end));
+                                    Tween<double>(begin: begin, end: end));
 
-                            _doubleClickAnimation!.addListener(
-                                _doubleClickAnimationListener);
+                            _doubleClickAnimation!
+                                .addListener(_doubleClickAnimationListener);
 
                             _doubleClickAnimationController.forward();
                           },
                           mode: ExtendedImageMode.gesture,
-                        )),
-                  ),
-                ),
-              ),
+                        ),
+                      ),
+                    ),
+                  )),
               Positioned(
                   left: 10,
                   bottom: 50,
@@ -243,9 +236,32 @@ class _ImageScreenState extends TIMUIKitState<ImageScreen>
                     iconSize: 30,
                     onPressed: close,
                   )),
-              if (widget.downloadFn != null)
+              if (widget.shareFn != null)
                 Positioned(
                   right: 10,
+                  bottom: 57,
+                  child: ClipOval(
+                      child: GestureDetector(
+                    onTap: () {
+                      widget.shareFn!();
+                    },
+                    child: Container(
+                      width: 33,
+                      height: 33,
+                      color: Color(0xFF4D4D4D),
+                      child: Center(
+                        child: Icon(
+                          Icons.ios_share,
+                          color: Colors.white,
+                          size: 20,
+                        ),
+                      ),
+                    ),
+                  )),
+                ),
+              if (widget.downloadFn != null)
+                Positioned(
+                  right: 60,
                   bottom: 50,
                   child: IconButton(
                     icon: Image.asset(
@@ -258,7 +274,7 @@ class _ImageScreenState extends TIMUIKitState<ImageScreen>
                         isLoading = true;
                       });
                       await widget.downloadFn!();
-                      Future.delayed(const Duration(milliseconds: 200),(){
+                      Future.delayed(const Duration(milliseconds: 200), () {
                         setState(() {
                           isLoading = false;
                         });
@@ -266,7 +282,7 @@ class _ImageScreenState extends TIMUIKitState<ImageScreen>
                     },
                   ),
                 ),
-              CenterLoading(messageID: widget.messageID),
+              // CenterLoading(messageID: widget.messageID),
               if (isLoading)
                 Container(
                   child: LoadingAnimationWidget.staggeredDotsWave(

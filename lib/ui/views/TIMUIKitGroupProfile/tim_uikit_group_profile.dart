@@ -14,7 +14,10 @@ import 'package:tencent_cloud_chat_uikit/ui/views/TIMUIKitGroupProfile/widgets/t
 import 'package:tencent_cloud_chat_uikit/ui/views/TIMUIKitGroupProfile/widgets/tim_uikit_group_button_area.dart';
 import 'package:tencent_cloud_chat_uikit/ui/views/TIMUIKitGroupProfile/widgets/tim_uikit_group_manage.dart';
 import 'package:tencent_cloud_chat_uikit/ui/views/TIMUIKitGroupProfile/widgets/tim_uikit_group_notification.dart';
+import 'package:get/get.dart';
+import 'package:QVChat/src/services/chatApp.dart';
 export 'package:tencent_cloud_chat_uikit/ui/widgets/transimit_group_owner_select.dart';
+import 'package:QVChat/src/share_contact.dart';
 
 typedef GroupProfileBuilder = Widget Function(BuildContext context,
     V2TimGroupInfo groupInfo, List<V2TimGroupMemberFullInfo?> groupMemberList);
@@ -61,10 +64,12 @@ class TIMUIKitGroupProfile extends StatefulWidget {
       {Key? key,
       required this.groupID,
       this.backGroundColor,
-      @Deprecated("[operationListBuilder] and [bottomOperationBuilder] merged into [builder], please use it instead")
-          this.bottomOperationBuilder,
-      @Deprecated("[operationListBuilder] and [bottomOperationBuilder] merged into [builder], please use it instead")
-          this.operationListBuilder,
+      @Deprecated(
+          "[operationListBuilder] and [bottomOperationBuilder] merged into [builder], please use it instead")
+      this.bottomOperationBuilder,
+      @Deprecated(
+          "[operationListBuilder] and [bottomOperationBuilder] merged into [builder], please use it instead")
+      this.operationListBuilder,
       this.builder,
       this.profileWidgetBuilder,
       this.onClickUser,
@@ -81,7 +86,9 @@ class _TIMUIKitGroupProfileState extends TIMUIKitState<TIMUIKitGroupProfile> {
   final model = TUIGroupProfileModel();
   final TUIGroupListenerModel groupListenerModel =
       serviceLocator<TUIGroupListenerModel>();
+  final ChatAppController _chatController = Get.put(ChatAppController());
 
+  GlobalKey repaintKey1 = GlobalKey();
   @override
   void initState() {
     super.initState();
@@ -187,8 +194,12 @@ class _TIMUIKitGroupProfileState extends TIMUIKitState<TIMUIKitGroupProfile> {
                 context,
                 MaterialPageRoute(
                     builder: (context) => GroupProfileNotificationPage(
-                        model: model,
-                        notification: groupInfo.notification ?? "")));
+                        callback: (String notification) async {
+                          await model.setGroupNotification(notification);
+                          Navigator.of(context).pop();
+                        },
+                        title: TIM_t("群公告"),
+                        content: groupInfo.notification ?? "")));
           }
 
           void toDefaultManagePage() {
@@ -224,6 +235,25 @@ class _TIMUIKitGroupProfileState extends TIMUIKitState<TIMUIKitGroupProfile> {
                           toDefaultNoticePage,
                           model.setGroupNotification)
                       : TIMUIKitGroupProfileWidget.groupNotification(
+                          groupInfo: groupInfo,
+                          onShareQRCode: () {
+                            _chatController.showQRCodePopup(
+                                repaintKey: repaintKey1,
+                                context: context,
+                                isGroup: true,
+                                groupId: groupInfo.groupID);
+                          },
+                          onShareContact: () {
+                            Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (context) =>
+                                        ShareContact(groupInfo: groupInfo)));
+                          },
+                          callback: (String notification) async {
+                            await model.setGroupNotification(notification);
+                            Navigator.of(context).pop();
+                          },
                           isHavePermission: isAdmin || isGroupOwner))!;
                 case GroupProfileWidgetEnum.groupManage:
                   if (isAdmin || isGroupOwner) {
@@ -241,10 +271,14 @@ class _TIMUIKitGroupProfileState extends TIMUIKitState<TIMUIKitGroupProfile> {
                   return (customBuilder?.operationDivider != null
                       ? customBuilder?.operationDivider!()
                       : TIMUIKitGroupProfileWidget.operationDivider(theme))!;
-                case GroupProfileWidgetEnum.groupTypeBar:
-                  return (customBuilder?.groupTypeBar != null
-                      ? customBuilder?.groupTypeBar!(groupInfo.groupType)
-                      : TIMUIKitGroupProfileWidget.groupType())!;
+                // case GroupProfileWidgetEnum.groupTypeBar:
+                //   return (customBuilder?.groupTypeBar != null
+                //       ? customBuilder?.groupTypeBar!(groupInfo.groupType)
+                //       : TIMUIKitGroupProfileWidget.groupType())!;
+                // case GroupProfileWidgetEnum.groupTypeBar:
+                //   return (customBuilder?.groupTypeBar != null
+                //       ? customBuilder?.groupTypeBar!(groupInfo.groupType)
+                //       : TIMUIKitGroupProfileWidget.groupType())!;
                 case GroupProfileWidgetEnum.groupJoiningModeBar:
                   final String groupType = groupInfo.groupType;
                   if (!(isGroupOwner || isAdmin) ||

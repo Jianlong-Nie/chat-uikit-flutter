@@ -4,10 +4,13 @@ import 'dart:math';
 import 'package:crypto/crypto.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:image_gallery_saver/image_gallery_saver.dart';
+import 'package:tencent_cloud_chat_uikit/data_services/message/message_services.dart';
 import 'package:tencent_cloud_chat_uikit/tencent_cloud_chat_uikit.dart';
+import 'package:tencent_im_base/tencent_im_base.dart';
 import 'package:extended_image/extended_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:tencent_cloud_chat_uikit/business_logic/view_models/tui_chat_global_model.dart';
 import 'package:tencent_cloud_chat_uikit/data_services/services_locatar.dart';
 import 'package:universal_html/html.dart' as html;
@@ -18,12 +21,14 @@ import 'package:tencent_cloud_chat_uikit/ui/utils/platform.dart';
 import 'package:tencent_cloud_chat_uikit/ui/widgets/video_custom_control.dart';
 import 'package:video_player/video_player.dart';
 import 'package:tencent_cloud_chat_uikit/base_widgets/tim_ui_kit_base.dart';
+import 'package:share_plus/share_plus.dart';
 
 class VideoScreen extends StatefulWidget {
-  const VideoScreen({required this.message,
-    required this.heroTag,
-    required this.videoElement,
-    Key? key})
+  const VideoScreen(
+      {required this.message,
+      required this.heroTag,
+      required this.videoElement,
+      Key? key})
       : super(key: key);
 
   final V2TimMessage message;
@@ -38,7 +43,7 @@ class _VideoScreenState extends TIMUIKitState<VideoScreen> {
   late VideoPlayerController videoPlayerController;
   late ChewieController chewieController;
   GlobalKey<ExtendedImageSlidePageState> slidePagekey =
-  GlobalKey<ExtendedImageSlidePageState>();
+      GlobalKey<ExtendedImageSlidePageState>();
   final TUIChatGlobalModel model = serviceLocator<TUIChatGlobalModel>();
   bool isInit = false;
 
@@ -56,16 +61,11 @@ class _VideoScreenState extends TIMUIKitState<VideoScreen> {
   }
 
   //保存网络视频到本地
-  Future<void> _saveNetworkVideo(context,
-      String videoUrl, {
-        bool isAsset = true,
-      }) async {
+  Future<void> _saveNetworkVideo(context, String videoUrl,
+      {bool isAsset = true, bool needShare = false}) async {
     if (PlatformUtils().isWeb) {
       RegExp exp = RegExp(r"((\.){1}[^?]{2,4})");
-      String? suffix = exp
-          .allMatches(videoUrl)
-          .last
-          .group(0);
+      String? suffix = exp.allMatches(videoUrl).last.group(0);
       var xhr = html.HttpRequest();
       xhr.open('get', videoUrl);
       xhr.responseType = 'arraybuffer';
@@ -92,7 +92,8 @@ class _VideoScreenState extends TIMUIKitState<VideoScreen> {
         AndroidDeviceInfo androidInfo = await deviceInfo.androidInfo;
         if ((androidInfo.version.sdkInt) >= 33) {
           final videos = await Permissions.checkPermission(
-            context, Permission.videos.value,
+            context,
+            Permission.videos.value,
           );
 
           if (!videos) {
@@ -100,7 +101,8 @@ class _VideoScreenState extends TIMUIKitState<VideoScreen> {
           }
         } else {
           final storage = await Permissions.checkPermission(
-            context, Permission.storage.value,
+            context,
+            Permission.storage.value,
           );
           if (!storage) {
             return;
@@ -126,6 +128,10 @@ class _VideoScreenState extends TIMUIKitState<VideoScreen> {
           var result = await ImageGallerySaver.saveFile(savePath);
           if (PlatformUtils().isIOS) {
             if (result['isSuccess']) {
+              if (needShare) {
+                Share.shareXFiles([XFile(savePath)], text: '');
+                return;
+              }
               onTIMCallback(TIMCallback(
                   type: TIMCallbackType.INFO,
                   infoRecommendText: TIM_t("视频保存成功"),
@@ -138,6 +144,10 @@ class _VideoScreenState extends TIMUIKitState<VideoScreen> {
             }
           } else {
             if (result != null) {
+              if (needShare) {
+                Share.shareXFiles([XFile(savePath)], text: '');
+                return;
+              }
               onTIMCallback(TIMCallback(
                   type: TIMCallbackType.INFO,
                   infoRecommendText: TIM_t("视频保存成功"),
@@ -161,6 +171,10 @@ class _VideoScreenState extends TIMUIKitState<VideoScreen> {
     var result = await ImageGallerySaver.saveFile(savePath);
     if (PlatformUtils().isIOS) {
       if (result['isSuccess']) {
+        if (needShare) {
+          Share.shareXFiles([XFile(savePath)], text: '');
+          return;
+        }
         onTIMCallback(TIMCallback(
             type: TIMCallbackType.INFO,
             infoRecommendText: TIM_t("视频保存成功"),
@@ -173,6 +187,10 @@ class _VideoScreenState extends TIMUIKitState<VideoScreen> {
       }
     } else {
       if (result != null) {
+        if (needShare) {
+          Share.shareXFiles([XFile(savePath)], text: '');
+          return;
+        }
         onTIMCallback(TIMCallback(
             type: TIMCallbackType.INFO,
             infoRecommendText: TIM_t("视频保存成功"),
@@ -187,23 +205,17 @@ class _VideoScreenState extends TIMUIKitState<VideoScreen> {
     return;
   }
 
-  Future<void> _saveVideo() async {
+  Future<void> _saveVideo({bool needShare = false}) async {
     if (PlatformUtils().isWeb) {
-      return await _saveNetworkVideo(
-        context,
-        widget.videoElement.videoPath!,
-        isAsset: true,
-      );
+      return await _saveNetworkVideo(context, widget.videoElement.videoPath!,
+          isAsset: true, needShare: needShare);
     }
     if (widget.videoElement.videoPath != '' &&
         widget.videoElement.videoPath != null) {
       File f = File(widget.videoElement.videoPath!);
       if (f.existsSync()) {
-        return await _saveNetworkVideo(
-          context,
-          widget.videoElement.videoPath!,
-          isAsset: true,
-        );
+        return await _saveNetworkVideo(context, widget.videoElement.videoPath!,
+            isAsset: true, needShare: needShare);
       }
     }
     if (widget.videoElement.localVideoUrl != '' &&
@@ -211,17 +223,12 @@ class _VideoScreenState extends TIMUIKitState<VideoScreen> {
       File f = File(widget.videoElement.localVideoUrl!);
       if (f.existsSync()) {
         return await _saveNetworkVideo(
-          context,
-          widget.videoElement.localVideoUrl!,
-          isAsset: true,
-        );
+            context, widget.videoElement.localVideoUrl!,
+            isAsset: true, needShare: needShare);
       }
     }
-    return await _saveNetworkVideo(
-      context,
-      widget.videoElement.videoUrl!,
-      isAsset: false,
-    );
+    return await _saveNetworkVideo(context, widget.videoElement.videoUrl!,
+        isAsset: false, needShare: needShare);
   }
 
   double getVideoHeight() {
@@ -258,27 +265,29 @@ class _VideoScreenState extends TIMUIKitState<VideoScreen> {
 
     VideoPlayerController player = PlatformUtils().isWeb
         ? ((TencentUtils.checkString(widget.videoElement.videoPath) != null) ||
-        widget.message.status == MessageStatus.V2TIM_MSG_STATUS_SENDING
-        ? VideoPlayerController.networkUrl(
-      Uri.parse(widget.videoElement.videoPath!),
-    )
-        : (TencentUtils.checkString(widget.videoElement.localVideoUrl) == null)
-        ? VideoPlayerController.networkUrl(
-      Uri.parse(widget.videoElement.videoUrl!),
-    )
-        : VideoPlayerController.networkUrl(
-      Uri.parse(widget.videoElement.localVideoUrl!),
-    ))
+                widget.message.status == MessageStatus.V2TIM_MSG_STATUS_SENDING
+            ? VideoPlayerController.networkUrl(
+                Uri.parse(widget.videoElement.videoPath!),
+              )
+            : (TencentUtils.checkString(widget.videoElement.localVideoUrl) ==
+                    null)
+                ? VideoPlayerController.networkUrl(
+                    Uri.parse(widget.videoElement.videoUrl!),
+                  )
+                : VideoPlayerController.networkUrl(
+                    Uri.parse(widget.videoElement.localVideoUrl!),
+                  ))
         : (TencentUtils.checkString(widget.videoElement.videoPath) != null ||
-        widget.message.status == MessageStatus.V2TIM_MSG_STATUS_SENDING)
-        ? VideoPlayerController.file(File(widget.videoElement.videoPath!))
-        : (TencentUtils.checkString(widget.videoElement.localVideoUrl) == null)
-        ? VideoPlayerController.networkUrl(
-      Uri.parse(widget.videoElement.videoUrl!),
-    )
-        : VideoPlayerController.file(File(
-      widget.videoElement.localVideoUrl!,
-    ));
+                widget.message.status == MessageStatus.V2TIM_MSG_STATUS_SENDING)
+            ? VideoPlayerController.file(File(widget.videoElement.videoPath!))
+            : (TencentUtils.checkString(widget.videoElement.localVideoUrl) ==
+                    null)
+                ? VideoPlayerController.networkUrl(
+                    Uri.parse(widget.videoElement.videoUrl!),
+                  )
+                : VideoPlayerController.file(File(
+                    widget.videoElement.localVideoUrl!,
+                  ));
     await player.initialize();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       double w = getVideoWidth();
@@ -290,9 +299,14 @@ class _VideoScreenState extends TIMUIKitState<VideoScreen> {
           showControlsOnInitialize: false,
           allowPlaybackSpeedChanging: false,
           aspectRatio: w == 0 || h == 0 ? null : w / h,
-          customControls: VideoCustomControls(downloadFn: () async {
-            return await _saveVideo();
-          }));
+          customControls: VideoCustomControls(
+            downloadFn: () async {
+              return await _saveVideo();
+            },
+            shareFn: () async {
+              return await _saveVideo(needShare: true);
+            },
+          ));
       setState(() {
         videoPlayerController = player;
         chewieController = controller;
@@ -330,10 +344,7 @@ class _VideoScreenState extends TIMUIKitState<VideoScreen> {
           child: Container(
             color: Colors.transparent,
             constraints: BoxConstraints.expand(
-              height: MediaQuery
-                  .of(context)
-                  .size
-                  .height,
+              height: MediaQuery.of(context).size.height,
             ),
             child: ExtendedImageSlidePage(
                 key: slidePagekey,
@@ -348,7 +359,8 @@ class _VideoScreenState extends TIMUIKitState<VideoScreen> {
                       .withOpacity(min(1.0, max(1.0 - opacity, 0.0)));
                 },
                 slideType: SlideType.onlyImage,
-                slideEndHandler: (Offset offset, {
+                slideEndHandler: (
+                  Offset offset, {
                   ExtendedImageSlidePageState? state,
                   ScaleEndDetails? details,
                 }) {
@@ -364,11 +376,11 @@ class _VideoScreenState extends TIMUIKitState<VideoScreen> {
                       color: Colors.black,
                       child: isInit
                           ? Chewie(
-                        controller: chewieController,
-                      )
+                              controller: chewieController,
+                            )
                           : const Center(
-                          child:
-                          CircularProgressIndicator(color: Colors.white))),
+                              child: CircularProgressIndicator(
+                                  color: Colors.white))),
                   heroBuilderForSlidingPage: (Widget result) {
                     return Hero(
                       tag: widget.heroTag,
@@ -379,9 +391,9 @@ class _VideoScreenState extends TIMUIKitState<VideoScreen> {
                           BuildContext fromHeroContext,
                           BuildContext toHeroContext) {
                         final Hero hero =
-                        (flightDirection == HeroFlightDirection.pop
-                            ? fromHeroContext.widget
-                            : toHeroContext.widget) as Hero;
+                            (flightDirection == HeroFlightDirection.pop
+                                ? fromHeroContext.widget
+                                : toHeroContext.widget) as Hero;
 
                         return hero.child;
                       },
